@@ -1,80 +1,69 @@
 "use client"
 
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, ShoppingCart, Trash2, ArrowLeft } from "lucide-react"
+import { Heart, ShoppingCart, Eye, Star } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-interface WishlistItem {
-  id: string
-  name: string
-  price: number
-  rentPrice: number
-  image: string
-  category: string
-  isRentable: boolean
-  inStock: boolean
-  rating: number
-  reviews: number
-}
+import { useWishlistStore, useCartStore, useAuthStore } from "@/lib/store"
+import { useRouter } from "next/navigation"
 
 export default function WishlistPage() {
   const { toast } = useToast()
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([
-    {
-      id: "AJ001",
-      name: "Diamond Elegance Necklace",
-      price: 25000,
-      rentPrice: 2500,
-      image: "/placeholder.svg?height=400&width=400",
-      category: "Necklaces",
-      isRentable: true,
-      inStock: true,
-      rating: 4.8,
-      reviews: 24,
-    },
-    {
-      id: "AJ003",
-      name: "Royal Sapphire Ring",
-      price: 35000,
-      rentPrice: 0,
-      image: "/placeholder.svg?height=400&width=400",
-      category: "Rings",
-      isRentable: false,
-      inStock: true,
-      rating: 5.0,
-      reviews: 12,
-    },
-  ])
+  const router = useRouter()
 
-  const removeFromWishlist = (id: string) => {
-    setWishlistItems(wishlistItems.filter((item) => item.id !== id))
+  const { items, removeItem } = useWishlistStore()
+  const { addItem: addToCart } = useCartStore()
+  const { requireAuth } = useAuthStore()
+
+  const handleRemoveFromWishlist = (id: string, name: string) => {
+    removeItem(id)
     toast({
       title: "Removed from Wishlist",
-      description: "Item has been removed from your wishlist",
+      description: `${name} has been removed from your wishlist`,
     })
   }
 
-  const addToCart = (id: string) => {
+  const handleAddToCart = (item: any) => {
+    if (!requireAuth()) {
+      toast({
+        title: "Login Required",
+        description: "Please login to add items to cart",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+      return
+    }
+
+    addToCart({
+      id: item.id,
+      name: item.name,
+      mrp: item.mrp,
+      price: item.price,
+      image: item.image,
+      type: "buy",
+    })
+
     toast({
       title: "Added to Cart",
-      description: "Item has been added to your cart",
+      description: `${item.name} has been added to your cart`,
     })
   }
 
-  if (wishlistItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-md mx-auto">
-          <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Your wishlist is empty</h1>
-          <p className="text-muted-foreground mb-6">Save items you love to view them later</p>
-          <Button asChild>
-            <Link href="/products">Discover Jewelry</Link>
+        <div className="text-center">
+          <Heart className="h-24 w-24 text-muted-foreground mx-auto mb-6" />
+          <h1 className="text-3xl font-bold mb-4">Your wishlist is empty</h1>
+          <p className="text-muted-foreground mb-8">Save items you love to your wishlist and shop them later.</p>
+          <Button
+            asChild
+            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+          >
+            <Link href="/products">Explore Products</Link>
           </Button>
         </div>
       </div>
@@ -83,110 +72,104 @@ export default function WishlistPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Button variant="ghost" asChild className="mb-4">
-          <Link href="/products">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Continue Shopping
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold">My Wishlist</h1>
-        <p className="text-muted-foreground">{wishlistItems.length} items saved</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">My Wishlist</h1>
+        <p className="text-muted-foreground">{items.length} items saved</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {wishlistItems.map((item) => (
-          <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
-            <div className="relative overflow-hidden">
-              <Image
-                src={item.image || "/placeholder.svg"}
-                alt={item.name}
-                width={400}
-                height={400}
-                className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-              />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {items.map((item) => {
+          const discountPercentage = Math.round(((item.mrp - item.price) / item.mrp) * 100)
 
-              <div className="absolute top-2 left-2 flex flex-col space-y-1">
-                {!item.inStock && <Badge variant="destructive">Out of Stock</Badge>}
-                {item.isRentable && <Badge className="bg-green-500 hover:bg-green-600">Rentable</Badge>}
-              </div>
+          return (
+            <Card key={item.id} className="group hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="relative mb-4">
+                  <Image
+                    src={item.image || "/placeholder.svg"}
+                    alt={item.name}
+                    width={300}
+                    height={300}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
 
-              <div className="absolute top-2 right-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-white/80 hover:bg-white"
-                  onClick={() => removeFromWishlist(item.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 bg-white/80 hover:bg-white text-red-500"
+                    onClick={() => handleRemoveFromWishlist(item.id, item.name)}
+                  >
+                    <Heart className="h-4 w-4 fill-current" />
+                  </Button>
 
-            <CardContent className="p-4">
-              <div className="mb-2">
-                <Badge variant="secondary" className="text-xs">
-                  {item.category}
-                </Badge>
-              </div>
+                  {discountPercentage > 0 && (
+                    <Badge variant="destructive" className="absolute top-2 left-2">
+                      {discountPercentage}% OFF
+                    </Badge>
+                  )}
 
-              <h3 className="font-semibold text-lg mb-2 line-clamp-2">
-                <Link href={`/products/${item.id}`} className="hover:text-amber-600 transition-colors">
-                  {item.name}
-                </Link>
-              </h3>
-
-              <div className="flex items-center mb-3">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <span
-                      key={i}
-                      className={`text-sm ${i < Math.floor(item.rating) ? "text-yellow-400" : "text-gray-300"}`}
-                    >
-                      ★
-                    </span>
-                  ))}
+                  {!item.inStock && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                      <Badge variant="secondary">Out of Stock</Badge>
+                    </div>
+                  )}
                 </div>
-                <span className="text-sm text-muted-foreground ml-2">({item.reviews})</span>
-              </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Buy:</span>
-                  <span className="font-bold text-lg">₹{item.price.toLocaleString()}</span>
-                </div>
-                {item.isRentable && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Rent:</span>
-                    <span className="font-semibold text-green-600">₹{item.rentPrice.toLocaleString()}/day</span>
+                <div className="space-y-2">
+                  <Badge variant="outline" className="text-xs">
+                    {item.category}
+                  </Badge>
+
+                  <h3 className="font-semibold text-sm line-clamp-2">{item.name}</h3>
+
+                  <div className="flex items-center space-x-1">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3 w-3 ${
+                            i < Math.floor(item.rating) ? "text-yellow-400 fill-current" : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground">({item.reviews})</span>
                   </div>
-                )}
-              </div>
-            </CardContent>
 
-            <CardFooter className="p-4 pt-0 space-y-2">
-              <div className="flex space-x-2 w-full">
-                <Button
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                  disabled={!item.inStock}
-                  onClick={() => addToCart(item.id)}
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Add to Cart
-                </Button>
-              </div>
-              {item.isRentable && (
-                <Button
-                  variant="outline"
-                  className="w-full border-green-500 text-green-600 hover:bg-green-50 bg-transparent"
-                  disabled={!item.inStock}
-                >
-                  <Link href={`/products/${item.id}`}>Rent Now</Link>
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+                  <div className="space-y-1">
+                    {item.mrp > item.price && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-muted-foreground line-through">₹{item.mrp.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="text-lg font-bold text-amber-600">₹{item.price.toLocaleString()}</div>
+                    {item.isRentable && (
+                      <div className="text-sm text-green-600">Rent: ₹{item.rentPrice.toLocaleString()}/day</div>
+                    )}
+                  </div>
+
+                  <div className="flex space-x-2 pt-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                      onClick={() => handleAddToCart(item)}
+                      disabled={!item.inStock}
+                    >
+                      <ShoppingCart className="h-3 w-3 mr-1" />
+                      Add to Cart
+                    </Button>
+
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/products/${item.id}`}>
+                        <Eye className="h-3 w-3" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

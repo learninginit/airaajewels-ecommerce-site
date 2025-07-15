@@ -1,12 +1,12 @@
 "use client"
-
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Heart, ShoppingCart, Eye } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { useCartStore, useWishlistStore } from "@/lib/store"
 
 const featuredProducts = [
   {
@@ -60,10 +60,59 @@ const featuredProducts = [
 ]
 
 export default function FeaturedProducts() {
-  const [wishlist, setWishlist] = useState<string[]>([])
+  const { toast } = useToast()
+  const { addItem: addToCart } = useCartStore()
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore()
 
-  const toggleWishlist = (productId: string) => {
-    setWishlist((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]))
+  const toggleWishlist = (product: (typeof featuredProducts)[0]) => {
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id)
+      toast({
+        title: "Removed from Wishlist",
+        description: `${product.name} has been removed from your wishlist`,
+      })
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        rentPrice: product.rentPrice,
+        image: product.image,
+        category: product.category,
+        isRentable: product.isRentable,
+        inStock: product.inStock,
+        rating: product.rating,
+        reviews: product.reviews,
+      })
+      toast({
+        title: "Added to Wishlist",
+        description: `${product.name} has been added to your wishlist`,
+      })
+    }
+  }
+
+  const handleAddToCart = (product: (typeof featuredProducts)[0]) => {
+    if (!product.inStock) {
+      toast({
+        title: "Out of Stock",
+        description: "This item is currently out of stock",
+        variant: "destructive",
+      })
+      return
+    }
+
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      type: "buy",
+    })
+
+    toast({
+      title: "Added to Cart",
+      description: `${product.name} has been added to your cart`,
+    })
   }
 
   return (
@@ -90,16 +139,18 @@ export default function FeaturedProducts() {
 
                 {/* Overlay Actions */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center space-x-2">
-                  <Button size="sm" variant="secondary" className="rounded-full">
-                    <Eye className="h-4 w-4" />
+                  <Button size="sm" variant="secondary" className="rounded-full" asChild>
+                    <Link href={`/products/${product.id}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
                   </Button>
                   <Button
                     size="sm"
                     variant="secondary"
                     className="rounded-full"
-                    onClick={() => toggleWishlist(product.id)}
+                    onClick={() => toggleWishlist(product)}
                   >
-                    <Heart className={`h-4 w-4 ${wishlist.includes(product.id) ? "fill-red-500 text-red-500" : ""}`} />
+                    <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? "fill-red-500 text-red-500" : ""}`} />
                   </Button>
                 </div>
 
@@ -163,6 +214,7 @@ export default function FeaturedProducts() {
                   <Button
                     className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                     disabled={!product.inStock}
+                    onClick={() => handleAddToCart(product)}
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     Buy
@@ -172,8 +224,9 @@ export default function FeaturedProducts() {
                       variant="outline"
                       className="flex-1 border-green-500 text-green-600 hover:bg-green-50 bg-transparent"
                       disabled={!product.inStock}
+                      asChild
                     >
-                      Rent
+                      <Link href={`/products/${product.id}`}>Rent</Link>
                     </Button>
                   )}
                 </div>
@@ -187,6 +240,7 @@ export default function FeaturedProducts() {
             size="lg"
             variant="outline"
             className="border-amber-500 text-amber-600 hover:bg-amber-50 bg-transparent"
+            asChild
           >
             <Link href="/products">View All Products</Link>
           </Button>

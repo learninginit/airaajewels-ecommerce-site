@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { Heart, ShoppingCart, Share2, Star, Calendar, Shield, Truck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useCartStore, useWishlistStore, useAuthStore } from "@/lib/store"
+import { useRouter } from "next/navigation"
 import SocialMediaBuzz from "@/components/social-media-buzz"
 
 interface ProductDetailProps {
@@ -17,16 +19,22 @@ interface ProductDetailProps {
 
 export default function ProductDetail({ productId }: ProductDetailProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [selectedImage, setSelectedImage] = useState(0)
-  const [quantity, setQuantity] = useState(1)
   const [rentalDays, setRentalDays] = useState(3)
+
+  const { addItem: addToCart } = useCartStore()
+  const { addItem: addToWishlist, removeItem: removeFromWishlist, isInWishlist } = useWishlistStore()
+  const { requireAuth } = useAuthStore()
 
   // Mock product data - in real app, fetch based on productId
   const product = {
     id: productId,
     name: "Diamond Elegance Necklace",
+    mrp: 30000,
     price: 25000,
     rentPrice: 2500,
+    securityDeposit: 5000,
     description:
       "Exquisite diamond necklace crafted with precision and elegance. Features premium diamonds set in 18k gold.",
     category: "Necklaces",
@@ -50,7 +58,29 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
     },
   }
 
+  const discountPercentage = Math.round(((product.mrp - product.price) / product.mrp) * 100)
+  const isWishlisted = isInWishlist(product.id)
+
   const handleAddToCart = () => {
+    if (!requireAuth()) {
+      toast({
+        title: "Login Required",
+        description: "Please login to add items to cart",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+      return
+    }
+
+    addToCart({
+      id: product.id,
+      name: product.name,
+      mrp: product.mrp,
+      price: product.price,
+      image: product.images[0],
+      type: "buy",
+    })
+
     toast({
       title: "Added to Cart",
       description: `${product.name} has been added to your cart`,
@@ -58,11 +88,73 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
   }
 
   const handleRentNow = () => {
+    if (!requireAuth()) {
+      toast({
+        title: "Login Required",
+        description: "Please login to rent items",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+      return
+    }
+
     const totalRentPrice = product.rentPrice * rentalDays
-    toast({
-      title: "Rental Request Submitted",
-      description: `Rental for ${rentalDays} days (₹${totalRentPrice.toLocaleString()}) has been submitted`,
+
+    addToCart({
+      id: product.id,
+      name: product.name,
+      mrp: product.mrp,
+      price: totalRentPrice,
+      image: product.images[0],
+      type: "rent",
+      rentDays: rentalDays,
+      rentPrice: product.rentPrice,
+      securityDeposit: product.securityDeposit,
     })
+
+    toast({
+      title: "Added to Cart",
+      description: `Rental for ${rentalDays} days (₹${totalRentPrice.toLocaleString()}) + Security Deposit (₹${product.securityDeposit.toLocaleString()}) has been added to cart`,
+    })
+  }
+
+  const handleWishlistToggle = () => {
+    if (!requireAuth()) {
+      toast({
+        title: "Login Required",
+        description: "Please login to manage wishlist",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+      return
+    }
+
+    if (isWishlisted) {
+      removeFromWishlist(product.id)
+      toast({
+        title: "Removed from Wishlist",
+        description: `${product.name} has been removed from your wishlist`,
+      })
+    } else {
+      addToWishlist({
+        id: product.id,
+        name: product.name,
+        mrp: product.mrp,
+        price: product.price,
+        rentPrice: product.rentPrice,
+        securityDeposit: product.securityDeposit,
+        image: product.images[0],
+        category: product.category,
+        isRentable: product.isRentable,
+        inStock: product.inStock,
+        rating: product.rating,
+        reviews: product.reviews,
+      })
+      toast({
+        title: "Added to Wishlist",
+        description: `${product.name} has been added to your wishlist`,
+      })
+    }
   }
 
   return (
@@ -107,8 +199,13 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
             <div className="flex items-center justify-between mb-2">
               <Badge variant="outline">{product.id}</Badge>
               <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="icon">
-                  <Heart className="h-5 w-5" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleWishlistToggle}
+                  className={isWishlisted ? "text-red-500" : ""}
+                >
+                  <Heart className={`h-5 w-5 ${isWishlisted ? "fill-current" : ""}`} />
                 </Button>
                 <Button variant="ghost" size="icon">
                   <Share2 className="h-5 w-5" />
@@ -137,9 +234,26 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
 
           <div className="space-y-4">
             <div>
+              <div className="flex items-center space-x-3 mb-2">
+                <span className="text-2xl text-muted-foreground line-through">₹{product.mrp.toLocaleString()}</span>
+                <Badge variant="destructive" className="text-sm">
+                  {discountPercentage}% OFF
+                </Badge>
+              </div>
               <div className="text-3xl font-bold text-amber-600 mb-2">₹{product.price.toLocaleString()}</div>
+              <div className="text-sm text-green-600 font-medium">
+                You save ₹{(product.mrp - product.price).toLocaleString()}
+              </div>
+
               {product.isRentable && (
-                <div className="text-lg text-green-600">Rent: ₹{product.rentPrice.toLocaleString()}/day</div>
+                <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-lg text-green-600 font-semibold">
+                    Rent: ₹{product.rentPrice.toLocaleString()}/day
+                  </div>
+                  <div className="text-sm text-green-600">
+                    Security Deposit: ₹{product.securityDeposit.toLocaleString()}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -148,7 +262,7 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center space-x-1">
                 <Truck className="h-4 w-4" />
-                <span>Free Shipping</span>
+                <span>Free Shipping above ₹1,999</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Shield className="h-4 w-4" />
@@ -200,6 +314,7 @@ export default function ProductDetail({ productId }: ProductDetailProps) {
                     >
                       <Calendar className="h-4 w-4 mr-2" />
                       Rent for {rentalDays} days - ₹{(product.rentPrice * rentalDays).toLocaleString()}
+                      <span className="text-xs ml-2">(+ ₹{product.securityDeposit.toLocaleString()} deposit)</span>
                     </Button>
                   </div>
                 )}

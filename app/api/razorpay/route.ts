@@ -1,37 +1,62 @@
 import { type NextRequest, NextResponse } from "next/server"
+import Razorpay from "razorpay"
 
-// A quick sanity-check so /api/razorpay opens in the browser
-export async function GET() {
-  return NextResponse.json({ ok: true, message: "Razorpay endpoint is live" })
-}
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID!,
+  key_secret: process.env.RAZORPAY_KEY_SECRET!,
+})
 
-// Mock Razorpay integration - In production, use actual Razorpay SDK
 export async function POST(request: NextRequest) {
   try {
-    const { amount, currency = "INR", productId, type } = await request.json()
+    const body = await request.json()
+    const { amount, currency = "INR", productId, type, couponCode, discount } = body
 
-    // In production, initialize Razorpay with your keys
-    // const razorpay = new Razorpay({
-    //   key_id: process.env.RAZORPAY_KEY_ID,
-    //   key_secret: process.env.RAZORPAY_KEY_SECRET,
-    // })
-
-    // Mock order creation
-    const order = {
-      id: `order_${Date.now()}`,
-      amount: amount * 100, // Razorpay expects amount in paise
+    // Create Razorpay order
+    const order = await razorpay.orders.create({
+      amount: Math.round(amount * 100), // Convert to paise
       currency,
-      receipt: `receipt_${productId}_${Date.now()}`,
-      status: "created",
-    }
+      receipt: `receipt_${Date.now()}`,
+      notes: {
+        productId,
+        type,
+        couponCode: couponCode || "",
+        discount: discount || 0,
+      },
+    })
+
+    // Log transaction for monitoring
+    console.log("Payment initiated:", {
+      orderId: order.id,
+      amount: amount,
+      productId,
+      type,
+      timestamp: new Date().toISOString(),
+    })
 
     return NextResponse.json({
       success: true,
-      order,
-      key: process.env.RAZORPAY_KEY_ID ?? "rzp_test_key",
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
     })
   } catch (error) {
     console.error("Razorpay order creation failed:", error)
-    return NextResponse.json({ success: false, error: "Failed to create order" }, { status: 500 })
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to create payment order",
+      },
+      { status: 500 },
+    )
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message: "Razorpay API is working",
+    timestamp: new Date().toISOString(),
+  })
 }

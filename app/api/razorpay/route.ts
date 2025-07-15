@@ -1,62 +1,61 @@
-import { type NextRequest, NextResponse } from "next/server"
-import Razorpay from "razorpay"
+"use server"
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-})
+import "server-only"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { amount, currency = "INR", productId, type, couponCode, discount } = body
-
-    // Create Razorpay order
-    const order = await razorpay.orders.create({
-      amount: Math.round(amount * 100), // Convert to paise
-      currency,
-      receipt: `receipt_${Date.now()}`,
-      notes: {
-        productId,
-        type,
-        couponCode: couponCode || "",
-        discount: discount || 0,
-      },
-    })
-
-    // Log transaction for monitoring
-    console.log("Payment initiated:", {
-      orderId: order.id,
-      amount: amount,
-      productId,
-      type,
-      timestamp: new Date().toISOString(),
-    })
-
-    return NextResponse.json({
-      success: true,
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
-    })
-  } catch (error) {
-    console.error("Razorpay order creation failed:", error)
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to create payment order",
-      },
-      { status: 500 },
-    )
-  }
+interface CreateOrderBody {
+  amount: number // amount in rupees sent from the client
 }
 
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    message: "Razorpay API is working",
-    timestamp: new Date().toISOString(),
-  })
+/**
+ * POST /api/razorpay
+ * Body: { amount: number }  – amount in INR rupees
+ * Returns: the newly-created Razorpay order plus { key } (the public key id)
+ */
+export async function POST(req: Request) {
+  try {
+    const { amount } = (await req.json()) as CreateOrderBody
+
+    if (!amount || typeof amount !== "number") {
+      return NextResponse.json({ error: "Invalid amount provided" }, { status: 400 })
+    }
+
+    const KEY_ID = process.env.RAZORPAY_KEY_ID
+    const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
+
+    if (!KEY_ID || !KEY_SECRET) {
+      return NextResponse.json({ error: "Razorpay environment variables not configured" }, { status: 500 })
+    }
+
+    // Razorpay expects amount in the **smallest currency unit** (paise)
+    const orderPayload = {
+      amount: amount * 100,
+      currency: "INR",
+      receipt: `rcpt_${Date.now()}`,
+    }
+
+    const authHeader = "Basic " + Buffer.from(`${KEY_ID}:${KEY_SECRET}`).toString("base64")
+
+    const razorRes = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authHeader,
+      },
+      body: JSON.stringify(orderPayload),
+      cache: "no-store",
+    })
+
+    if (!razorRes.ok) {
+      const errText = await razorRes.text()
+      return NextResponse.json({ error: "Failed to create Razorpay order", details: errText }, { status: 500 })
+    }
+
+    const order = await razorRes.json()
+
+    // Return the order details plus the **public** key id for client-side checkout
+    return NextResponse.json({ ...order, key: KEY_ID })
+  } catch (err: any) {
+    return NextResponse.json({ error: "Unexpected server error", message: err?.message }, { status: 500 })
+  }
 }

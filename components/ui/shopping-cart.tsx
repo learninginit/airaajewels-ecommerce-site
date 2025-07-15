@@ -1,37 +1,21 @@
-"use client"
+import type { SVGProps } from "react"
 
-import { ShoppingCartIcon as CartIcon } from "lucide-react"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { useCartStore } from "@/lib/store"
-
-/**
- * A tiny cart button for the header/nav bar.
- * It shows a badge with item count and links to /cart.
- */
-export default function ShoppingCart({
-  className,
-}: {
-  className?: string
-}) {
-  const { items } = useCartStore()
-  const count = items.reduce((sum, i) => sum + i.quantity, 0)
-
-  return (
-    <Link
-      href="/cart"
-      aria-label="Shopping cart"
-      className={cn(
-        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border hover:bg-muted",
-        className,
-      )}
-    >
-      <CartIcon className="h-5 w-5" />
-      {count > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-semibold text-white">
-          {count}
-        </span>
-      )}
-    </Link>
-  )
-}
+const ShoppingCart = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="8" cy="21" r="1" />
+    <circle cx="19" cy="21" r="1" />
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+  </svg>
+)
+export default ShoppingCart

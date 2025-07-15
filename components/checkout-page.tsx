@@ -57,6 +57,28 @@ const indianStates = [
   "Puducherry",
 ]
 
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
+
+// Utility - returns true once the Razorpay script is loaded
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    // already present?
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      return resolve(true)
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
+
 export default function CheckoutPage() {
   const { toast } = useToast()
   const router = useRouter()
@@ -98,7 +120,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     // If user has a default address, pre-fill it
-    if (user && user.addresses.length > 0) {
+    if (user && Array.isArray(user.addresses) && user.addresses.length > 0) {
       const defaultAddress = user.addresses.find((addr) => addr.isDefault) || user.addresses[0]
       setShippingAddress({
         fullName: defaultAddress.fullName,
@@ -163,6 +185,13 @@ export default function CheckoutPage() {
     }
 
     if (paymentMethod === "razorpay") {
+      // Load Razorpay script dynamically
+      const scriptLoaded = await loadRazorpayScript()
+      if (!scriptLoaded) {
+        toast({ title: "Payment Error", description: "Failed to load Razorpay SDK", variant: "destructive" })
+        return
+      }
+
       // Razorpay integration logic
       const res = await fetch("/api/razorpay", {
         method: "POST",
@@ -175,8 +204,7 @@ export default function CheckoutPage() {
 
       if (data.id) {
         const options = {
-          // key is returned safely from the server – nothing sensitive in the bundle
-          key: data.key,
+          key: data.key, // Key is returned safely from the server
           amount: data.amount,
           currency: data.currency,
           name: "Airaa Jewels",

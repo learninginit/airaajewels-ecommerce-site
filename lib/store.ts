@@ -1,93 +1,123 @@
 "use client"
 
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 
 // Types
-export interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  phone: string
-  isAuthenticated: boolean
-}
-
-export interface CartItem {
+export interface Product {
   id: string
   name: string
-  mrp: number
   price: number
-  image: string
-  quantity: number
-  type: "buy" | "rent"
-  rentDays?: number
-  rentPrice?: number
-  securityDeposit?: number
-}
-
-export interface WishlistItem {
-  id: string
-  name: string
-  mrp: number
-  price: number
-  rentPrice: number
-  securityDeposit: number
   image: string
   category: string
-  isRentable: boolean
-  inStock: boolean
   rating: number
   reviews: number
+  isRentable?: boolean
+  rentPrice?: number
 }
 
-export interface Order {
-  id: string
-  date: string
-  status: "processing" | "shipped" | "delivered" | "cancelled"
-  total: number
-  items: CartItem[]
-  shippingAddress: string
-  trackingNumber?: string
-  couponCode?: string
-  discount?: number
-}
-
-export interface Rental {
-  id: string
-  startDate: string
-  endDate: string
-  status: "active" | "completed" | "overdue" | "cancelled"
-  totalAmount: number
-  securityDeposit: number
-  item: {
-    id: string
-    name: string
-    image: string
-    dailyRate: number
-  }
-  daysRented: number
-  daysRemaining?: number
-}
-
-export interface Coupon {
-  id: string
-  code: string
-  type: "percentage" | "fixed"
-  value: number
-  minOrderAmount: number
-  maxDiscount?: number
-  validFrom: string
-  validTo: string
-  isActive: boolean
-  usageLimit?: number
-  usedCount: number
-}
-
-export interface AdminSettings {
+interface AdminSettings {
   codEnabled: boolean
   freeShippingThreshold: number
   taxRate: number
+}
+
+interface AdminState {
+  products: Product[]
+  coupons: { id: string; code: string; discount: number; type: "percentage" | "fixed" }[]
+  shippingCost: number
+  taxRate: number
+  addProduct: (product: Product) => void
+  updateProduct: (product: Product) => void
+  deleteProduct: (productId: string) => void
+  addCoupon: (coupon: { code: string; discount: number; type: "percentage" | "fixed" }) => void
+  updateCoupon: (
+    couponId: string,
+    updatedCoupon: { code: string; discount: number; type: "percentage" | "fixed" },
+  ) => void
+  deleteCoupon: (couponId: string) => void
+  setShippingCost: (cost: number) => void
+  setTaxRate: (rate: number) => void
+}
+
+interface User {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+}
+
+interface AuthState {
+  user: User | null
+  login: (user: User) => void
+  logout: () => void
+  updateProfile: (profile: Partial<User>) => void
+}
+
+interface CartItem {
+  id: string
+  name: string
+  price: number
+  image: string
+  quantity: number
+  type: "buy" | "rent" // 'buy' for purchase, 'rent' for rental
+  rentDays?: number // Number of days for rental items
+}
+
+interface CartState {
+  items: CartItem[]
+  addCartItem: (item: CartItem) => void
+  removeCartItem: (id: string) => void
+  updateCartItemQuantity: (id: string, quantity: number) => void
+  clearCart: () => void
+  getCartTotal: () => number
+  getCartItemCount: () => number
+}
+
+interface WishlistItem extends Product {}
+
+interface WishlistState {
+  wishlist: WishlistItem[]
+  addToWishlist: (product: WishlistItem) => void
+  removeFromWishlist: (productId: string) => void
+  isInWishlist: (productId: string) => boolean
+  getWishlistItemCount: () => number
+}
+
+interface OrderItem {
+  id: string
+  name: string
+  price: number
+  image: string
+  quantity: number
+}
+
+interface Order {
+  id: string
+  date: string
+  total: number
+  status: "processing" | "shipped" | "delivered" | "cancelled"
+  items: OrderItem[]
+  shippingAddress: string
+  trackingNumber?: string
+}
+
+interface Rental {
+  id: string
+  date: string
+  total: number
+  status: "rented" | "returned" | "overdue"
+  items: OrderItem[]
+  rentalPeriod: string
+}
+
+interface OrdersState {
+  orders: Order[]
+  rentals: Rental[]
+  addOrder: (order: Order) => void
+  addRental: (rental: Rental) => void
+  updateOrderStatus: (orderId: string, newStatus: Order["status"], trackingNumber?: string) => void
 }
 
 // Indian States
@@ -131,438 +161,233 @@ export const INDIAN_STATES = [
 ]
 
 // Auth Store
-interface AuthStore {
-  user: User | null
-  isLoading: boolean
-  signIn: (email: string, password: string) => Promise<boolean>
-  signUp: (userData: any) => Promise<boolean>
-  signOut: () => void
-  updateProfile: (userData: Partial<User>) => void
-  requireAuth: () => boolean
-}
-
-export const useAuthStore = create<AuthStore>()(
+export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
-      user: null,
-      isLoading: false,
-
-      signIn: async (email: string, password: string) => {
-        set({ isLoading: true })
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Mock authentication - in production, validate against your backend
-        if (email && password) {
-          const user: User = {
-            id: "1",
-            email,
-            firstName: "Priya",
-            lastName: "Sharma",
-            phone: "+91 98765 43210",
-            isAuthenticated: true,
-          }
-          set({ user, isLoading: false })
-          return true
-        }
-
-        set({ isLoading: false })
-        return false
-      },
-
-      signUp: async (userData: any) => {
-        set({ isLoading: true })
-
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        const user: User = {
-          id: Date.now().toString(),
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          phone: userData.phone,
-          isAuthenticated: true,
-        }
-
-        set({ user, isLoading: false })
-        return true
-      },
-
-      signOut: () => {
-        set({ user: null })
-      },
-
-      updateProfile: (userData: Partial<User>) => {
-        const currentUser = get().user
-        if (currentUser) {
-          set({ user: { ...currentUser, ...userData } })
-        }
-      },
-
-      requireAuth: () => {
-        return get().user?.isAuthenticated || false
-      },
+    (set) => ({
+      user: {
+        id: "user-123",
+        firstName: "Priya",
+        lastName: "Sharma",
+        email: "priya.sharma@email.com",
+        phone: "+91 98765 43210",
+      }, // Default user for demonstration
+      login: (user) => set({ user }),
+      logout: () => set({ user: null }),
+      updateProfile: (profile) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...profile } : null,
+        })),
     }),
     {
       name: "auth-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )
 
 // Cart Store
-interface CartStore {
-  items: CartItem[]
-  appliedCoupon: Coupon | null
-  addItem: (item: Omit<CartItem, "quantity">) => void
-  removeItem: (id: string) => void
-  updateQuantity: (id: string, quantity: number) => void
-  clearCart: () => void
-  getTotalItems: () => number
-  getSubtotal: () => number
-  getShipping: () => number
-  getTax: () => number
-  getDiscount: () => number
-  getTotal: () => number
-  applyCoupon: (coupon: Coupon) => void
-  removeCoupon: () => void
-  getBuyItems: () => CartItem[]
-  getRentItems: () => CartItem[]
-}
-
-export const useCartStore = create<CartStore>()(
+export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      appliedCoupon: null,
+      addCartItem: (newItem) =>
+        set((state) => {
+          const existingItemIndex = state.items.findIndex(
+            (item) => item.id === newItem.id && item.type === newItem.type,
+          )
 
-      addItem: (newItem) => {
-        const items = get().items
-        const itemKey = `${newItem.id}-${newItem.type}`
-        const existingItem = items.find((item) => `${item.id}-${item.type}` === itemKey)
-
-        if (existingItem) {
-          set({
-            items: items.map((item) =>
-              `${item.id}-${item.type}` === itemKey ? { ...item, quantity: item.quantity + 1 } : item,
-            ),
-          })
-        } else {
-          set({
-            items: [...items, { ...newItem, quantity: 1 }],
-          })
-        }
-      },
-
-      removeItem: (itemKey) => {
-        set({
-          items: get().items.filter((item) => `${item.id}-${item.type}` !== itemKey),
-        })
-      },
-
-      updateQuantity: (itemKey, quantity) => {
-        if (quantity <= 0) {
-          get().removeItem(itemKey)
-          return
-        }
-
-        set({
-          items: get().items.map((item) => (`${item.id}-${item.type}` === itemKey ? { ...item, quantity } : item)),
-        })
-      },
-
-      clearCart: () => {
-        set({ items: [], appliedCoupon: null })
-      },
-
-      getTotalItems: () => {
-        return get().items.reduce((total, item) => total + item.quantity, 0)
-      },
-
-      getSubtotal: () => {
-        return get().items.reduce((total, item) => {
-          const itemPrice =
-            item.type === "rent"
-              ? (item.rentPrice || 0) * (item.rentDays || 1) + (item.securityDeposit || 0)
-              : item.price
-          return total + itemPrice * item.quantity
-        }, 0)
-      },
-
-      getShipping: () => {
-        const subtotal = get().getSubtotal()
-        const settings = useAdminStore.getState().settings
-        return subtotal >= settings.freeShippingThreshold ? 0 : 99
-      },
-
-      getTax: () => {
-        const subtotal = get().getSubtotal()
-        const settings = useAdminStore.getState().settings
-        return subtotal * (settings.taxRate / 100)
-      },
-
-      getDiscount: () => {
-        const coupon = get().appliedCoupon
-        if (!coupon) return 0
-
-        const subtotal = get().getSubtotal()
-        if (subtotal < coupon.minOrderAmount) return 0
-
-        let discount = 0
-        if (coupon.type === "percentage") {
-          discount = subtotal * (coupon.value / 100)
-          if (coupon.maxDiscount) {
-            discount = Math.min(discount, coupon.maxDiscount)
+          if (existingItemIndex > -1) {
+            // If item exists and is of the same type, update quantity
+            const updatedItems = state.items.map((item, index) =>
+              index === existingItemIndex ? { ...item, quantity: item.quantity + newItem.quantity } : item,
+            )
+            return { items: updatedItems }
+          } else {
+            // Add new item
+            return { items: [...state.items, newItem] }
           }
-        } else {
-          discount = coupon.value
-        }
-
-        return Math.min(discount, subtotal)
-      },
-
-      getTotal: () => {
-        const subtotal = get().getSubtotal()
-        const shipping = get().getShipping()
-        const tax = get().getTax()
-        const discount = get().getDiscount()
-        return subtotal + shipping + tax - discount
-      },
-
-      applyCoupon: (coupon) => {
-        set({ appliedCoupon: coupon })
-      },
-
-      removeCoupon: () => {
-        set({ appliedCoupon: null })
-      },
-
-      getBuyItems: () => {
-        return get().items.filter((item) => item.type === "buy")
-      },
-
-      getRentItems: () => {
-        return get().items.filter((item) => item.type === "rent")
-      },
+        }),
+      removeCartItem: (id) =>
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== id),
+        })),
+      updateCartItemQuantity: (id, quantity) =>
+        set((state) => ({
+          items: state.items.map((item) => (item.id === id ? { ...item, quantity: quantity } : item)),
+        })),
+      clearCart: () => set({ items: [] }),
+      getCartTotal: () =>
+        get().items.reduce((total, item) => {
+          if (item.type === "buy") {
+            return total + item.price * item.quantity
+          } else if (item.type === "rent" && item.rentDays) {
+            return total + (item.rentPrice || item.price) * item.rentDays
+          }
+          return total
+        }, 0),
+      getCartItemCount: () => get().items.reduce((count, item) => count + item.quantity, 0),
     }),
     {
       name: "cart-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )
 
 // Wishlist Store
-interface WishlistStore {
-  items: WishlistItem[]
-  addItem: (item: WishlistItem) => void
-  removeItem: (id: string) => void
-  isInWishlist: (id: string) => boolean
-  getTotalItems: () => number
-}
-
-export const useWishlistStore = create<WishlistStore>()(
+export const useWishlistStore = create<WishlistState>()(
   persist(
     (set, get) => ({
-      items: [],
-
-      addItem: (item) => {
-        const items = get().items
-        if (!items.find((existingItem) => existingItem.id === item.id)) {
-          set({ items: [...items, item] })
-        }
-      },
-
-      removeItem: (id) => {
-        set({
-          items: get().items.filter((item) => item.id !== id),
-        })
-      },
-
-      isInWishlist: (id) => {
-        return get().items.some((item) => item.id === id)
-      },
-
-      getTotalItems: () => {
-        return get().items.length
-      },
+      wishlist: [],
+      addToWishlist: (product) =>
+        set((state) => {
+          if (!state.wishlist.some((item) => item.id === product.id)) {
+            return { wishlist: [...state.wishlist, product] }
+          }
+          return state
+        }),
+      removeFromWishlist: (productId) =>
+        set((state) => ({
+          wishlist: state.wishlist.filter((item) => item.id !== productId),
+        })),
+      isInWishlist: (productId) => get().wishlist.some((item) => item.id === productId),
+      getWishlistItemCount: () => get().wishlist.length,
     }),
     {
       name: "wishlist-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )
 
 // Orders Store
-interface OrdersStore {
-  orders: Order[]
-  rentals: Rental[]
-  addOrder: (order: Order) => void
-  addRental: (rental: Rental) => void
-  updateOrderStatus: (id: string, status: Order["status"]) => void
-  updateRentalStatus: (id: string, status: Rental["status"]) => void
-}
-
-export const useOrdersStore = create<OrdersStore>()(
+export const useOrdersStore = create<OrdersState>()(
   persist(
     (set, get) => ({
       orders: [
         {
-          id: "ORD-2024-001",
-          date: "2024-01-15",
+          id: "ORD001",
+          date: "2023-01-15T10:00:00Z",
+          total: 37000,
           status: "delivered",
-          total: 25000,
           items: [
-            {
-              id: "AJ001",
-              name: "Diamond Elegance Necklace",
-              image: "/placeholder.svg?height=100&width=100",
-              mrp: 30000,
-              price: 25000,
-              quantity: 1,
-              type: "buy",
-            },
+            { id: "AJ001", name: "Diamond Elegance Necklace", price: 25000, image: "/placeholder.svg", quantity: 1 },
+            { id: "AJ002", name: "Golden Bracelet Set", price: 6500, image: "/placeholder.svg", quantity: 2 },
           ],
           shippingAddress: "123 Main St, Mumbai, Maharashtra 400001",
-          trackingNumber: "TRK123456789",
+          trackingNumber: "TRK123456",
         },
-      ],
-
-      rentals: [
         {
-          id: "RNT-2024-001",
-          startDate: "2024-01-10",
-          endDate: "2024-01-17",
-          status: "active",
-          totalAmount: 17500,
-          securityDeposit: 5000,
-          item: {
-            id: "AJ001",
-            name: "Diamond Elegance Necklace",
-            image: "/placeholder.svg?height=100&width=100",
-            dailyRate: 2500,
-          },
-          daysRented: 7,
-          daysRemaining: 3,
+          id: "ORD002",
+          date: "2023-02-20T14:30:00Z",
+          total: 12000,
+          status: "processing",
+          items: [{ id: "AJ003", name: "Royal Ruby Earrings", price: 12000, image: "/placeholder.svg", quantity: 1 }],
+          shippingAddress: "456 Oak Ave, Delhi, Delhi 110001",
+          trackingNumber: "TRK789012",
         },
       ],
-
-      addOrder: (order) => {
-        set({ orders: [order, ...get().orders] })
-      },
-
-      addRental: (rental) => {
-        set({ rentals: [rental, ...get().rentals] })
-      },
-
-      updateOrderStatus: (id, status) => {
-        set({
-          orders: get().orders.map((order) => (order.id === id ? { ...order, status } : order)),
-        })
-      },
-
-      updateRentalStatus: (id, status) => {
-        set({
-          rentals: get().rentals.map((rental) => (rental.id === id ? { ...rental, status } : rental)),
-        })
-      },
+      rentals: [], // No rental history for now as per user request
+      addOrder: (order) =>
+        set((state) => ({
+          orders: [order, ...state.orders], // Add new order to the beginning
+        })),
+      addRental: (rental) => set((state) => ({ rentals: [...state.rentals, rental] })),
+      updateOrderStatus: (orderId, status, trackingNumber) =>
+        set((state) => ({
+          orders: state.orders.map((order) =>
+            order.id === orderId ? { ...order, status, trackingNumber: trackingNumber || order.trackingNumber } : order,
+          ),
+        })),
     }),
     {
       name: "orders-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )
 
 // Admin Store
-interface AdminStore {
-  settings: AdminSettings
-  coupons: Coupon[]
-  updateSettings: (settings: Partial<AdminSettings>) => void
-  addCoupon: (coupon: Coupon) => void
-  updateCoupon: (id: string, coupon: Partial<Coupon>) => void
-  deleteCoupon: (id: string) => void
-  validateCoupon: (code: string) => Coupon | null
-}
-
-export const useAdminStore = create<AdminStore>()(
+export const useAdminStore = create<AdminState>()(
   persist(
     (set, get) => ({
-      settings: {
-        codEnabled: true,
-        freeShippingThreshold: 1999,
-        taxRate: 18,
-      },
-
-      coupons: [
+      products: [
         {
-          id: "1",
-          code: "WELCOME10",
-          type: "percentage",
-          value: 10,
-          minOrderAmount: 2000,
-          maxDiscount: 1000,
-          validFrom: "2024-01-01",
-          validTo: "2024-12-31",
-          isActive: true,
-          usageLimit: 1000,
-          usedCount: 45,
+          id: "AJ001",
+          name: "Diamond Elegance Necklace",
+          price: 25000,
+          image: "/placeholder.svg?height=200&width=200",
+          category: "Necklaces",
+          rating: 4.8,
+          reviews: 120,
+          isRentable: false,
         },
         {
-          id: "2",
-          code: "FLAT500",
-          type: "fixed",
-          value: 500,
-          minOrderAmount: 5000,
-          validFrom: "2024-01-01",
-          validTo: "2024-06-30",
-          isActive: true,
-          usageLimit: 500,
-          usedCount: 123,
+          id: "AJ002",
+          name: "Golden Bracelet Set",
+          price: 6500,
+          image: "/placeholder.svg?height=200&width=200",
+          category: "Bracelets",
+          rating: 4.5,
+          reviews: 80,
+          isRentable: true,
+          rentPrice: 500, // per day
+        },
+        {
+          id: "AJ003",
+          name: "Royal Ruby Earrings",
+          price: 12000,
+          image: "/placeholder.svg?height=200&width=200",
+          category: "Earrings",
+          rating: 4.9,
+          reviews: 150,
+          isRentable: false,
+        },
+        {
+          id: "AJ004",
+          name: "Emerald Grand Ring",
+          price: 18000,
+          image: "/placeholder.svg?height=200&width=200",
+          category: "Rings",
+          rating: 4.7,
+          reviews: 95,
+          isRentable: true,
+          rentPrice: 800, // per day
         },
       ],
-
-      updateSettings: (newSettings) => {
-        set({
-          settings: { ...get().settings, ...newSettings },
-        })
-      },
-
-      addCoupon: (coupon) => {
-        set({
-          coupons: [...get().coupons, coupon],
-        })
-      },
-
-      updateCoupon: (id, updatedCoupon) => {
-        set({
-          coupons: get().coupons.map((coupon) => (coupon.id === id ? { ...coupon, ...updatedCoupon } : coupon)),
-        })
-      },
-
-      deleteCoupon: (id) => {
-        set({
-          coupons: get().coupons.filter((coupon) => coupon.id !== id),
-        })
-      },
-
-      validateCoupon: (code) => {
-        const coupon = get().coupons.find((c) => c.code.toLowerCase() === code.toLowerCase())
-
-        if (!coupon || !coupon.isActive) return null
-
-        const now = new Date()
-        const validFrom = new Date(coupon.validFrom)
-        const validTo = new Date(coupon.validTo)
-
-        if (now < validFrom || now > validTo) return null
-
-        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) return null
-
-        return coupon
-      },
+      coupons: [
+        { id: "CUPON1", code: "SAVE10", discount: 10, type: "percentage" },
+        { id: "CUPON2", code: "FLAT500", discount: 500, type: "fixed" },
+      ],
+      shippingCost: 100,
+      taxRate: 0.18, // 18% GST
+      addProduct: (product) => set((state) => ({ products: [...state.products, product] })),
+      updateProduct: (updatedProduct) =>
+        set((state) => ({
+          products: state.products.map((product) => (product.id === updatedProduct.id ? updatedProduct : product)),
+        })),
+      deleteProduct: (productId) =>
+        set((state) => ({
+          products: state.products.filter((product) => product.id !== productId),
+        })),
+      addCoupon: (coupon) =>
+        set((state) => ({ coupons: [...state.coupons, { ...coupon, id: `CUPON${state.coupons.length + 1}` }] })),
+      updateCoupon: (couponId, updatedCoupon) =>
+        set((state) => ({
+          coupons: state.coupons.map((coupon) =>
+            coupon.id === couponId ? { ...updatedCoupon, id: couponId } : coupon,
+          ),
+        })),
+      deleteCoupon: (couponId) =>
+        set((state) => ({
+          coupons: state.coupons.filter((coupon) => coupon.id !== couponId),
+        })),
+      setShippingCost: (cost) => set({ shippingCost: cost }),
+      setTaxRate: (rate) => set({ taxRate: rate }),
     }),
     {
       name: "admin-storage",
+      storage: createJSONStorage(() => localStorage),
     },
   ),
 )

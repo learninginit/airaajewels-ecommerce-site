@@ -1,142 +1,180 @@
+"use client"
+
 import Link from "next/link"
-import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react"
+import { Facebook, Instagram, Twitter, Youtube } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">AJ</span>
-              </div>
-              <span className="font-bold text-xl">Airaa Jewels</span>
-            </div>
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Premium jewelry collection with authentic designs. Buy or rent exquisite pieces for your special moments.
-            </p>
-            <div className="flex space-x-4">
-              <Link href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-                <Twitter className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-                <Youtube className="h-5 w-5" />
-              </Link>
-            </div>
+    <footer className="bg-gray-100 py-12 dark:bg-gray-800">
+      <div className="container mx-auto grid grid-cols-1 gap-8 px-4 md:grid-cols-4">
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Airaa Jewels</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Exquisite jewelry for every occasion. Crafted with passion and precision.
+          </p>
+          <div className="flex space-x-4">
+            <Link
+              href="#"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+              prefetch={false}
+            >
+              <Facebook className="h-6 w-6" />
+            </Link>
+            <Link
+              href="#"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+              prefetch={false}
+            >
+              <Instagram className="h-6 w-6" />
+            </Link>
+            <Link
+              href="#"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+              prefetch={false}
+            >
+              <Twitter className="h-6 w-6" />
+            </Link>
+            <Link
+              href="#"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+              prefetch={false}
+            >
+              <Youtube className="h-6 w-6" />
+            </Link>
           </div>
-
-          {/* Quick Links */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Quick Links</h3>
+          <nav className="space-y-2">
             <ul className="space-y-2">
               <li>
-                <Link href="/products" className="text-gray-400 hover:text-white transition-colors">
-                  All Products
+                <Link
+                  href="/"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Home
                 </Link>
               </li>
               <li>
-                <Link href="/categories" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/products"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Shop
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/categories"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   Categories
                 </Link>
               </li>
               <li>
-                <Link href="/rent" className="text-gray-400 hover:text-white transition-colors">
-                  Rent Jewelry
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/about"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/contact"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   Contact
                 </Link>
               </li>
             </ul>
-          </div>
-
-          {/* Customer Service */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4">Customer Service</h3>
+          </nav>
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Customer Service</h3>
+          <nav className="space-y-2">
             <ul className="space-y-2">
               <li>
-                <Link href="/help" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/help-center"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-gray-400 hover:text-white transition-colors">
-                  Shipping Info
+                <Link
+                  href="/shipping-info"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Shipping Information
                 </Link>
               </li>
               <li>
-                <Link href="/returns" className="text-gray-400 hover:text-white transition-colors">
-                  Returns
+                <Link
+                  href="/returns"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Returns & Exchanges
                 </Link>
               </li>
               <li>
-                <Link href="/size-guide" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/size-guide"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   Size Guide
                 </Link>
               </li>
               <li>
-                <Link href="/care" className="text-gray-400 hover:text-white transition-colors">
+                <Link
+                  href="/jewelry-care"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
                   Jewelry Care
                 </Link>
               </li>
             </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4">Contact Info</h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <Phone className="h-4 w-4 text-amber-500" />
-                <span className="text-gray-400">+91 98765 43210</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Mail className="h-4 w-4 text-amber-500" />
-                <span className="text-gray-400">info@airaajewels.com</span>
-              </div>
-              <div className="flex items-start space-x-3">
-                <MapPin className="h-4 w-4 text-amber-500 mt-1" />
-                <span className="text-gray-400">
-                  123 Jewelry Street,
-                  <br />
-                  Mumbai, Maharashtra 400001
-                </span>
-              </div>
-            </div>
-          </div>
+          </nav>
         </div>
-
-        <div className="border-t border-gray-800 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">© 2024 Airaa Jewels. All rights reserved.</p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Terms of Service
-              </Link>
-              <Link href="/sitemap" className="text-gray-400 hover:text-white text-sm transition-colors">
-                Sitemap
-              </Link>
-            </div>
-          </div>
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Legal</h3>
+          <nav className="space-y-2">
+            <ul className="space-y-2">
+              <li>
+                <Link
+                  href="/terms-of-service"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/privacy-policy"
+                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
+                  prefetch={false}
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
+      </div>
+      <div className="mt-8 border-t border-gray-200 pt-8 text-center text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
+        © {new Date().getFullYear()} Airaa Jewels. All rights reserved.
       </div>
     </footer>
   )

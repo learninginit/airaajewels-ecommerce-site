@@ -12,12 +12,16 @@ import { Separator } from "@/components/ui/separator"
 import { Package, Truck, CheckCircle, XCircle, Search, Download, Star, MessageCircle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useOrdersStore } from "@/lib/store"
+import ReviewModal from "./review-modal" // Import the new ReviewModal component
 
 export default function OrderHistory() {
   const { toast } = useToast()
   const { orders } = useOrdersStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  const [currentReviewProductId, setCurrentReviewProductId] = useState<string | null>(null)
+  const [currentReviewOrderId, setCurrentReviewOrderId] = useState<string | null>(null)
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -76,6 +80,22 @@ export default function OrderHistory() {
       title: "Invoice Downloaded",
       description: `Invoice for order ${orderId} has been downloaded.`,
     })
+  }
+
+  const handleReview = (productId: string, orderId: string) => {
+    setCurrentReviewProductId(productId)
+    setCurrentReviewOrderId(orderId)
+    setIsReviewModalOpen(true)
+  }
+
+  const handleReviewSubmit = (rating: number, reviewText: string) => {
+    toast({
+      title: "Review Submitted",
+      description: `Thank you for reviewing product ${currentReviewProductId} from order ${currentReviewOrderId} with rating ${rating} and review: "${reviewText}"!`,
+    })
+    setIsReviewModalOpen(false)
+    setCurrentReviewProductId(null)
+    setCurrentReviewOrderId(null)
   }
 
   return (
@@ -164,7 +184,7 @@ export default function OrderHistory() {
                         </div>
                         {order.status === "delivered" && (
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => handleReview(item.id, order.id)}>
                               <Star className="h-4 w-4 mr-1" />
                               Review
                             </Button>
@@ -226,6 +246,16 @@ export default function OrderHistory() {
           )}
         </CardContent>
       </Card>
+
+      {isReviewModalOpen && (
+        <ReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          productId={currentReviewProductId!}
+          orderId={currentReviewOrderId!}
+          onSubmit={handleReviewSubmit}
+        />
+      )}
     </div>
   )
 }

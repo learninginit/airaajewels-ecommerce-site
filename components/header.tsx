@@ -1,169 +1,250 @@
 "use client"
 
-import type React from "react"
+import { Separator } from "@/components/ui/separator"
 
+import { Badge } from "@/components/ui/badge"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Search, ShoppingCart, Heart, Menu, User } from "lucide-react"
-import { useCartStore, useWishlistStore, useAuthStore } from "@/lib/store"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+  Menu,
+  Search,
+  ShoppingCart,
+  Heart,
+  User,
+  Package,
+  LogOut,
+  Home,
+  Info,
+  Phone,
+  Gift,
+  Gem,
+  BookOpen,
+} from "lucide-react"
+import { useCartStore, useWishlistStore, useAuthStore } from "@/lib/store"
+import { useToast } from "@/hooks/use-toast"
 
 export default function Header() {
-  const cartItemsCount = useCartStore((state) => state.getCartItemCount())
-  const wishlistItemsCount = useWishlistStore((state) => state.getWishlistItemCount())
-  const { user, logout } = useAuthStore()
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const { getCartItemCount } = useCartStore()
+  const { getWishlistItemCount } = useWishlistStore()
+  const { user, signOut } = useAuthStore()
+  const { toast } = useToast()
+
+  const handleSignOut = () => {
+    signOut()
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+      variant: "success",
+    })
+    setIsSheetOpen(false) // Close sheet on sign out
+  }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
+    <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold" prefetch={false}>
-          <GemIcon className="h-6 w-6 text-amber-600" />
-          <span className="text-xl">Airaa Jewels</span>
+        <Link className="flex items-center gap-2 text-lg font-semibold" href="/">
+          <Gem className="h-6 w-6 text-amber-500" />
+          <span className="sr-only">Airaa Jewels</span>
+          Airaa Jewels
         </Link>
-        <nav className="hidden items-center space-x-6 lg:flex">
-          <Link href="/products" className="text-sm font-medium hover:underline" prefetch={false}>
+        <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
+          <Link className="hover:text-amber-500" href="/">
+            Home
+          </Link>
+          <Link className="hover:text-amber-500" href="/products">
             Shop
           </Link>
-          <Link href="/categories" className="text-sm font-medium hover:underline" prefetch={false}>
+          <Link className="hover:text-amber-500" href="/categories">
             Categories
           </Link>
-          <Link href="/about" className="text-sm font-medium hover:underline" prefetch={false}>
-            About
+          <Link className="hover:text-amber-500" href="/rent">
+            Rent
           </Link>
-          <Link href="/contact" className="text-sm font-medium hover:underline" prefetch={false}>
+          <Link className="hover:text-amber-500" href="/about">
+            About Us
+          </Link>
+          <Link className="hover:text-amber-500" href="/contact">
             Contact
           </Link>
         </nav>
         <div className="flex items-center gap-4">
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+          <div className="relative hidden md:block">
             <Input
+              className="w-48 rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50"
+              placeholder="Search..."
               type="search"
-              placeholder="Search products..."
-              className="w-full rounded-md bg-gray-100 py-2 pl-10 pr-4 text-sm focus:outline-none dark:bg-gray-800"
             />
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
           </div>
-          <Button variant="ghost" size="icon" className="relative">
-            <Link href="/wishlist">
+          <Link className="relative" href="/wishlist">
+            <Button size="icon" variant="ghost">
               <Heart className="h-5 w-5" />
-              {wishlistItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-xs text-white">
-                  {wishlistItemsCount}
-                </span>
-              )}
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" className="relative">
-            <Link href="/cart">
-              <ShoppingCart className="h-5 w-5" />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-xs text-white">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Link>
-          </Button>
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-amber-400 to-orange-400 text-white">
-                      {user.firstName.charAt(0)}
-                      {user.lastName.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="sr-only">Toggle user menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile?tab=orders">Orders</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/profile?tab=addresses">Addresses</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button asChild>
-              <Link href="/auth/login">
-                <User className="h-5 w-5 mr-2" />
-                Login
-              </Link>
+              <span className="sr-only">Wishlist</span>
             </Button>
-          )}
-          <Sheet>
+            {getWishlistItemCount() > 0 && (
+              <Badge className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs text-white">
+                {getWishlistItemCount()}
+              </Badge>
+            )}
+          </Link>
+          <Link className="relative" href="/cart">
+            <Button size="icon" variant="ghost">
+              <ShoppingCart className="h-5 w-5" />
+              <span className="sr-only">Cart</span>
+            </Button>
+            {getCartItemCount() > 0 && (
+              <Badge className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-xs text-white">
+                {getCartItemCount()}
+              </Badge>
+            )}
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost">
+                <User className="h-5 w-5" />
+                <span className="sr-only">User Account</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {user ? (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">
+                      <User className="mr-2 h-4 w-4" /> My Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile?tab=orders">
+                      <Package className="mr-2 h-4 w-4" /> My Orders
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/login">
+                      <User className="mr-2 h-4 w-4" /> Sign In
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/auth/register">
+                      <User className="mr-2 h-4 w-4" /> Register
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
+              <Button className="md:hidden" size="icon" variant="ghost">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left">
-              <Link href="#" className="mr-6 flex items-center gap-2" prefetch={false}>
-                <GemIcon className="h-6 w-6 text-amber-600" />
-                <span className="text-lg font-semibold">Airaa Jewels</span>
+              <Link
+                className="mr-6 flex items-center gap-2 text-lg font-semibold"
+                href="/"
+                onClick={() => setIsSheetOpen(false)}
+              >
+                <Gem className="h-6 w-6 text-amber-500" />
+                Airaa Jewels
               </Link>
               <div className="grid gap-2 py-6">
-                <Link href="/products" className="flex w-full items-center py-2 text-lg font-semibold" prefetch={false}>
-                  Shop
+                <Link
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/"
+                  onClick={() => setIsSheetOpen(false)}
+                >
+                  <Home className="mr-2 h-5 w-5" /> Home
                 </Link>
                 <Link
-                  href="/categories"
-                  className="flex w-full items-center py-2 text-lg font-semibold"
-                  prefetch={false}
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/products"
+                  onClick={() => setIsSheetOpen(false)}
                 >
-                  Categories
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Shop
                 </Link>
-                <Link href="/about" className="flex w-full items-center py-2 text-lg font-semibold" prefetch={false}>
-                  About
+                <Link
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/categories"
+                  onClick={() => setIsSheetOpen(false)}
+                >
+                  <Gift className="mr-2 h-5 w-5" /> Categories
                 </Link>
-                <Link href="/contact" className="flex w-full items-center py-2 text-lg font-semibold" prefetch={false}>
-                  Contact
+                <Link
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/rent"
+                  onClick={() => setIsSheetOpen(false)}
+                >
+                  <BookOpen className="mr-2 h-5 w-5" /> Rent
                 </Link>
+                <Link
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/about"
+                  onClick={() => setIsSheetOpen(false)}
+                >
+                  <Info className="mr-2 h-5 w-5" /> About Us
+                </Link>
+                <Link
+                  className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                  href="/contact"
+                  onClick={() => setIsSheetOpen(false)}
+                >
+                  <Phone className="mr-2 h-5 w-5" /> Contact
+                </Link>
+                <Separator className="my-2" />
                 {user ? (
                   <>
                     <Link
+                      className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
                       href="/profile"
-                      className="flex w-full items-center py-2 text-lg font-semibold"
-                      prefetch={false}
+                      onClick={() => setIsSheetOpen(false)}
                     >
-                      My Account
+                      <User className="mr-2 h-5 w-5" /> My Profile
+                    </Link>
+                    <Link
+                      className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                      href="/profile?tab=orders"
+                      onClick={() => setIsSheetOpen(false)}
+                    >
+                      <Package className="mr-2 h-5 w-5" /> My Orders
                     </Link>
                     <Button
                       variant="ghost"
-                      onClick={logout}
-                      className="w-full justify-start py-2 text-lg font-semibold"
+                      className="flex w-full items-center justify-start py-2 text-lg font-semibold hover:text-amber-500"
+                      onClick={handleSignOut}
                     >
-                      Logout
+                      <LogOut className="mr-2 h-5 w-5" /> Sign Out
                     </Button>
                   </>
                 ) : (
-                  <Link
-                    href="/auth/login"
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    prefetch={false}
-                  >
-                    Login
-                  </Link>
+                  <>
+                    <Link
+                      className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                      href="/auth/login"
+                      onClick={() => setIsSheetOpen(false)}
+                    >
+                      <User className="mr-2 h-5 w-5" /> Sign In
+                    </Link>
+                    <Link
+                      className="flex w-full items-center py-2 text-lg font-semibold hover:text-amber-500"
+                      href="/auth/register"
+                      onClick={() => setIsSheetOpen(false)}
+                    >
+                      <User className="mr-2 h-5 w-5" /> Register
+                    </Link>
+                  </>
                 )}
               </div>
             </SheetContent>
@@ -171,27 +252,5 @@ export default function Header() {
         </div>
       </div>
     </header>
-  )
-}
-
-function GemIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 3h12l4 6-10 13L2 9Z" />
-      <path d="M12 17L10 9l-7 2" />
-      <path d="M12 17l2-8 7 2" />
-      <path d="M2 9l10 2 10-2" />
-    </svg>
   )
 }

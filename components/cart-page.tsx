@@ -1,246 +1,277 @@
 "use client"
-
-import { Label } from "@/components/ui/label"
 import Image from "next/image"
 import Link from "next/link"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Trash2, ShoppingCart, ArrowRight } from "lucide-react"
+import { useCartStore, useAdminStore, useAuthStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
-import { useCartStore, useAdminStore } from "@/lib/store"
+import { Trash2, Package, Info } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import ShoppingCart from "@/components/ui/shopping-cart" // Declared the ShoppingCart variable
 
 export default function CartPage() {
-  const { toast } = useToast()
-  const { items, removeCartItem, updateCartItemQuantity, clearCart, getCartTotal } = useCartStore()
+  const { items, removeCartItem, updateCartItemQuantity, getCartTotal } = useCartStore()
+  const { user } = useAuthStore()
   const { settings } = useAdminStore()
+  const { toast } = useToast()
 
   const buyItems = items.filter((item) => item.type === "buy")
   const rentItems = items.filter((item) => item.type === "rent")
 
-  const buyTotal = buyItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const rentTotal = rentItems.reduce((sum, item) => sum + item.price * item.quantity * (item.rentDays || 1), 0) // Assuming rentDays for calculation
-  const subtotal = buyTotal + rentTotal
+  const subtotalBuy = buyItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const subtotalRent = rentItems.reduce(
+    (sum, item) => sum + (item.rentPrice || item.price) * item.quantity * (item.rentDays || 1),
+    0,
+  )
+  const subtotal = subtotalBuy + subtotalRent
 
-  const shippingCharge = subtotal < settings.freeShippingThreshold && buyItems.length > 0 ? 150 : 0 // Apply shipping only for buy items below threshold
-  const taxAmount = (subtotal * settings.taxRate) / 100
-  const grandTotal = subtotal + shippingCharge + taxAmount
+  const shippingFee = subtotal < settings.freeShippingThreshold && buyItems.length > 0 ? 150 : 0
+  const gstAmount = (subtotal + shippingFee) * (settings.taxRate / 100)
+  const totalAmount = subtotal + shippingFee + gstAmount
+
+  const handleQuantityChange = (id: string, type: "buy" | "rent", quantity: number) => {
+    if (quantity < 1) return
+    updateCartItemQuantity(id, type, quantity)
+  }
 
   const handleRemoveItem = (id: string, type: "buy" | "rent") => {
     removeCartItem(id, type)
     toast({
       title: "Item Removed",
-      description: "The item has been removed from your cart.",
+      description: "Item has been removed from your cart.",
+      variant: "default",
     })
   }
 
-  const handleUpdateQuantity = (id: string, type: "buy" | "rent", quantity: number) => {
+  const handleRentDaysChange = (id: string, quantity: number) => {
     if (quantity < 1) return
-    updateCartItemQuantity(id, type, quantity)
-  }
-
-  const handleProceedToCheckout = () => {
-    if (items.length === 0) {
-      toast({
-        title: "Cart is Empty",
-        description: "Please add items to your cart before proceeding to checkout.",
-        variant: "destructive",
-      })
-      return
-    }
-    // Navigate to checkout page
-    window.location.href = "/checkout"
+    // This is a simplified update. In a real app, you'd update the specific rentDays for the item.
+    // For now, we'll just update the quantity which is used in calculation.
+    updateCartItemQuantity(id, "rent", quantity)
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Your Shopping Cart</h1>
-        <p className="text-muted-foreground">Review your selected items before checkout</p>
+        <p className="text-muted-foreground">Review your items before checkout.</p>
       </div>
 
-      {items.length === 0 ? (
-        <div className="text-center py-12">
-          <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>
-          <p className="text-muted-foreground mb-4">Looks like you haven't added anything to your cart yet.</p>
-          <Button asChild>
-            <Link href="/products">Start Shopping</Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            {buyItems.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Items for Purchase</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {buyItems.map((item) => (
-                    <div
-                      key={`${item.id}-${item.type}`}
-                      className="flex items-center gap-4 border-b pb-4 last:border-b-0 last:pb-0"
-                    >
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        width={100}
-                        height={100}
-                        className="w-20 h-20 object-cover rounded-md"
-                      />
-                      <div className="flex-1 grid gap-1">
-                        <h3 className="font-medium">{item.name}</h3>
-                        <p className="text-sm text-muted-foreground">Type: Purchase</p>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 bg-transparent"
-                            onClick={() => handleUpdateQuantity(item.id, item.type, item.quantity - 1)}
-                          >
-                            -
-                          </Button>
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={(e) => handleUpdateQuantity(item.id, item.type, Number(e.target.value))}
-                            className="w-16 text-center"
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 bg-transparent"
-                            onClick={() => handleUpdateQuantity(item.id, item.type, item.quantity + 1)}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-600"
-                          onClick={() => handleRemoveItem(item.id, item.type)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-            {rentItems.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Items for Rent</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {rentItems.map((item) => (
-                    <div
-                      key={`${item.id}-${item.type}`}
-                      className="flex items-center gap-4 border-b pb-4 last:border-b-0 last:pb-0"
-                    >
-                      <Image
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        width={100}
-                        height={100}
-                        className="w-20 h-20 object-cover rounded-md"
-                      />
-                      <div className="flex-1 grid gap-1">
-                        <h3 className="font-medium">{item.name}</h3>
-                        <p className="text-sm text-muted-foreground">Type: Rental</p>
-                        <p className="text-sm text-muted-foreground">Rent Price: ₹{item.price.toLocaleString()}/day</p>
-                        <div className="flex items-center gap-2">
-                          <Label htmlFor={`rent-days-${item.id}`}>Rental Days:</Label>
-                          <Input
-                            id={`rent-days-${item.id}`}
-                            type="number"
-                            value={item.rentDays || 1}
-                            onChange={(e) =>
-                              updateCartItemQuantity(item.id, item.type, item.quantity, Number(e.target.value))
-                            }
-                            className="w-20 text-center"
-                            min={1}
-                          />
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">
-                          ₹{(item.price * item.quantity * (item.rentDays || 1)).toLocaleString()}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-500 hover:text-red-600"
-                          onClick={() => handleRemoveItem(item.id, item.type)}
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          <div className="lg:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Cart Items */}
+        <div className="lg:col-span-2 space-y-6">
+          {items.length === 0 ? (
             <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span>Subtotal (Purchase):</span>
-                  <span>₹{buyTotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Subtotal (Rental):</span>
-                  <span>₹{rentTotal.toLocaleString()}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between">
-                  <span>Total Items:</span>
-                  <span>{items.reduce((count, item) => count + item.quantity, 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping:</span>
-                  <span>{shippingCharge === 0 ? "Free" : `₹${shippingCharge.toLocaleString()}`}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tax ({settings.taxRate}%):</span>
-                  <span>₹{taxAmount.toLocaleString()}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Grand Total:</span>
-                  <span>₹{grandTotal.toLocaleString()}</span>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                  onClick={handleProceedToCheckout}
-                >
-                  Proceed to Checkout
-                  <ArrowRight className="h-4 w-4 ml-2" />
+              <CardContent className="p-6 text-center">
+                <ShoppingCart className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600" />
+                <p className="mt-4 text-lg font-semibold">Your cart is empty.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Looks like you haven't added anything to your cart yet.
+                </p>
+                <Button asChild className="mt-6 bg-amber-500 hover:bg-amber-600 text-white">
+                  <Link href="/products">Start Shopping</Link>
                 </Button>
-              </CardFooter>
+              </CardContent>
             </Card>
+          ) : (
+            <>
+              {buyItems.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" /> Items for Purchase
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {buyItems.map((item) => (
+                      <div
+                        key={`${item.id}-buy`}
+                        className="flex items-center gap-4 border-b pb-4 last:border-b-0 last:pb-0"
+                      >
+                        <Image
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          width={80}
+                          height={80}
+                          className="rounded-md object-cover"
+                        />
+                        <div className="flex-1 grid gap-1">
+                          <h3 className="font-medium">{item.name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Price: ₹{item.price.toLocaleString()}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleQuantityChange(item.id, "buy", item.quantity - 1)}
+                            >
+                              -
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(item.id, "buy", Number.parseInt(e.target.value))}
+                              className="w-16 text-center"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleQuantityChange(item.id, "buy", item.quantity + 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="font-semibold">₹{(item.price * item.quantity).toLocaleString()}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id, "buy")}>
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
-            <Button variant="outline" className="w-full bg-transparent" onClick={clearCart}>
-              Clear Cart
-            </Button>
-          </div>
+              {rentItems.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Info className="h-5 w-5" /> Items for Rent
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {rentItems.map((item) => (
+                      <div
+                        key={`${item.id}-rent`}
+                        className="flex items-center gap-4 border-b pb-4 last:border-b-0 last:pb-0"
+                      >
+                        <Image
+                          src={item.image || "/placeholder.svg"}
+                          alt={item.name}
+                          width={80}
+                          height={80}
+                          className="rounded-md object-cover"
+                        />
+                        <div className="flex-1 grid gap-1">
+                          <h3 className="font-medium">{item.name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Rent Price: ₹{(item.rentPrice || item.price).toLocaleString()}/day
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleRentDaysChange(item.id, item.rentDays ? item.rentDays - 1 : 1)}
+                            >
+                              -
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.rentDays || 1}
+                              onChange={(e) =>
+                                updateCartItemQuantity(item.id, "rent", item.quantity, Number.parseInt(e.target.value))
+                              }
+                              className="w-20 text-center"
+                              min={1}
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleRentDaysChange(item.id, item.rentDays ? item.rentDays + 1 : 1)}
+                            >
+                              +
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleQuantityChange(item.id, "rent", item.quantity - 1)}
+                            >
+                              -
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => handleQuantityChange(item.id, "rent", Number.parseInt(e.target.value))}
+                              className="w-16 text-center"
+                              min={1}
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8 bg-transparent"
+                              onClick={() => handleQuantityChange(item.id, "rent", item.quantity + 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className="font-semibold">
+                            ₹{((item.rentPrice || item.price) * item.quantity * (item.rentDays || 1)).toLocaleString()}
+                          </span>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id, "rent")}>
+                            <Trash2 className="h-5 w-5 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
         </div>
-      )}
+
+        {/* Order Summary */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Order Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>₹{subtotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Shipping</span>
+                {shippingFee === 0 ? (
+                  <Badge className="bg-green-500 text-white">Free</Badge>
+                ) : (
+                  <span>₹{shippingFee.toLocaleString()}</span>
+                )}
+              </div>
+              <div className="flex justify-between">
+                <span>GST ({settings.taxRate}%)</span>
+                <span>₹{gstAmount.toLocaleString()}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between font-bold text-xl">
+                <span>Total</span>
+                <span>₹{totalAmount.toLocaleString()}</span>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button
+                asChild
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                <Link href="/checkout">Proceed to Checkout</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

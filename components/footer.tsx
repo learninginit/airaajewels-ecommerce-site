@@ -1,93 +1,75 @@
 "use client"
 
 import Link from "next/link"
-import { Facebook, Instagram, Twitter, Youtube } from "lucide-react"
+import { Gem, Facebook, Instagram, Twitter, Youtube } from "lucide-react"
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-100 py-12 dark:bg-gray-800">
-      <div className="container mx-auto grid grid-cols-1 gap-8 px-4 md:grid-cols-4">
+    <footer className="bg-gray-100 py-12 dark:bg-gray-900">
+      <div className="container grid grid-cols-1 gap-8 md:grid-cols-4">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Airaa Jewels</h3>
+          <Link className="flex items-center gap-2 text-lg font-semibold" href="#">
+            <Gem className="h-6 w-6 text-amber-500" />
+            Airaa Jewels
+          </Link>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Exquisite jewelry for every occasion. Crafted with passion and precision.
           </p>
-          <div className="flex space-x-4">
-            <Link
-              href="#"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-              prefetch={false}
-            >
+          <div className="flex gap-4">
+            <Link className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500" href="#">
               <Facebook className="h-6 w-6" />
             </Link>
-            <Link
-              href="#"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-              prefetch={false}
-            >
+            <Link className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500" href="#">
               <Instagram className="h-6 w-6" />
             </Link>
-            <Link
-              href="#"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-              prefetch={false}
-            >
+            <Link className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500" href="#">
               <Twitter className="h-6 w-6" />
             </Link>
-            <Link
-              href="#"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-              prefetch={false}
-            >
+            <Link className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500" href="#">
               <Youtube className="h-6 w-6" />
             </Link>
           </div>
         </div>
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Quick Links</h3>
-          <nav className="space-y-2">
-            <ul className="space-y-2">
+          <nav className="space-y-2 text-sm">
+            <ul>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Home
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/products"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Shop
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/categories"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Categories
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/about"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   About Us
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/contact"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Contact
                 </Link>
@@ -97,49 +79,44 @@ export default function Footer() {
         </div>
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Customer Service</h3>
-          <nav className="space-y-2">
-            <ul className="space-y-2">
+          <nav className="space-y-2 text-sm">
+            <ul>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/help-center"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Help Center
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/shipping-info"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Shipping Information
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/returns"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Returns & Exchanges
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/size-guide"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Size Guide
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/jewelry-care"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Jewelry Care
                 </Link>
@@ -149,22 +126,20 @@ export default function Footer() {
         </div>
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Legal</h3>
-          <nav className="space-y-2">
-            <ul className="space-y-2">
+          <nav className="space-y-2 text-sm">
+            <ul>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/terms-of-service"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Terms of Service
                 </Link>
               </li>
               <li>
                 <Link
+                  className="text-gray-600 hover:text-amber-500 dark:text-gray-400 dark:hover:text-amber-500"
                   href="/privacy-policy"
-                  className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-50"
-                  prefetch={false}
                 >
                   Privacy Policy
                 </Link>
@@ -173,7 +148,7 @@ export default function Footer() {
           </nav>
         </div>
       </div>
-      <div className="mt-8 border-t border-gray-200 pt-8 text-center text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
+      <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
         © {new Date().getFullYear()} Airaa Jewels. All rights reserved.
       </div>
     </footer>

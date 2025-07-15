@@ -4,7 +4,7 @@ import Link from "next/link"
 
 import { CardFooter } from "@/components/ui/card"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,9 +15,10 @@ import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { useCartStore, useOrdersStore, useAdminStore } from "@/lib/store"
+import { useCartStore, useOrdersStore, useAdminStore, useAuthStore } from "@/lib/store"
 import { useRouter } from "next/navigation"
 import { MapPin, CreditCard, Wallet } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 const indianStates = [
   "Andhra Pradesh",
@@ -59,12 +60,13 @@ const indianStates = [
 export default function CheckoutPage() {
   const { toast } = useToast()
   const router = useRouter()
+  const { user } = useAuthStore()
   const { items, clearCart } = useCartStore()
   const { addOrder } = useOrdersStore()
   const { settings } = useAdminStore()
 
   const [shippingAddress, setShippingAddress] = useState({
-    name: "",
+    fullName: "",
     phone: "",
     addressLine1: "",
     addressLine2: "",
@@ -72,14 +74,52 @@ export default function CheckoutPage() {
     state: "",
     pincode: "",
   })
-  const [paymentMethod, setPaymentMethod] = useState("cod") // 'cod', 'razorpay'
+  const [paymentMethod, setPaymentMethod] = useState("razorpay") // Default to Razorpay
   const [termsAccepted, setTermsAccepted] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to proceed to checkout.",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+    }
+    if (items.length === 0) {
+      toast({
+        title: "Cart is Empty",
+        description: "Please add items to your cart before checking out.",
+        variant: "destructive",
+      })
+      router.push("/cart")
+    }
+  }, [user, items, router, toast])
+
+  useEffect(() => {
+    // If user has a default address, pre-fill it
+    if (user && user.addresses.length > 0) {
+      const defaultAddress = user.addresses.find((addr) => addr.isDefault) || user.addresses[0]
+      setShippingAddress({
+        fullName: defaultAddress.fullName,
+        phone: defaultAddress.phone,
+        addressLine1: defaultAddress.addressLine1,
+        addressLine2: defaultAddress.addressLine2 || "",
+        city: defaultAddress.city,
+        state: defaultAddress.state,
+        pincode: defaultAddress.pincode,
+      })
+    }
+  }, [user])
 
   const buyItems = items.filter((item) => item.type === "buy")
   const rentItems = items.filter((item) => item.type === "rent")
 
   const buyTotal = buyItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const rentTotal = rentItems.reduce((sum, item) => sum + item.price * item.quantity * (item.rentDays || 1), 0)
+  const rentTotal = rentItems.reduce(
+    (sum, item) => sum + (item.rentPrice || item.price) * item.quantity * (item.rentDays || 1),
+    0,
+  )
   const subtotal = buyTotal + rentTotal
 
   const shippingCharge = subtotal < settings.freeShippingThreshold && buyItems.length > 0 ? 150 : 0
@@ -87,6 +127,16 @@ export default function CheckoutPage() {
   const grandTotal = subtotal + shippingCharge + taxAmount
 
   const handlePlaceOrder = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to proceed.",
+        variant: "destructive",
+      })
+      router.push("/auth/login")
+      return
+    }
+
     if (!termsAccepted) {
       toast({
         title: "Terms Not Accepted",
@@ -97,7 +147,7 @@ export default function CheckoutPage() {
     }
 
     if (
-      !shippingAddress.name ||
+      !shippingAddress.fullName ||
       !shippingAddress.phone ||
       !shippingAddress.addressLine1 ||
       !shippingAddress.city ||
@@ -125,7 +175,8 @@ export default function CheckoutPage() {
 
       if (data.id) {
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          // key is returned safely from the server – nothing sensitive in the bundle
+          key: data.key,
           amount: data.amount,
           currency: data.currency,
           name: "Airaa Jewels",
@@ -135,7 +186,8 @@ export default function CheckoutPage() {
             // Payment successful, save order
             const newOrder = {
               id: `ORD${Date.now()}`,
-              date: new Date().toISOString().split("T")[0],
+              userId: user.id, // Associate order with current user
+              date: new Date().toISOString(),
               total: grandTotal,
               status: "processing" as const,
               items: items.map((item) => ({
@@ -157,8 +209,8 @@ export default function CheckoutPage() {
             router.push("/profile?tab=orders")
           },
           prefill: {
-            name: shippingAddress.name,
-            email: "customer@example.com", // Replace with actual user email
+            name: shippingAddress.fullName,
+            email: user.email || "", // Use actual user email
             contact: shippingAddress.phone,
           },
           theme: {
@@ -178,7 +230,8 @@ export default function CheckoutPage() {
       // COD or other direct payment methods
       const newOrder = {
         id: `ORD${Date.now()}`,
-        date: new Date().toISOString().split("T")[0],
+        userId: user.id, // Associate order with current user
+        date: new Date().toISOString(),
         total: grandTotal,
         status: "processing" as const,
         items: items.map((item) => ({
@@ -201,6 +254,10 @@ export default function CheckoutPage() {
     }
   }
 
+  if (!user || items.length === 0) {
+    return null // Or a loading spinner/message
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -221,12 +278,13 @@ export default function CheckoutPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
+                  <Label htmlFor="fullName">Full Name *</Label>
                   <Input
-                    id="name"
-                    value={shippingAddress.name}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, name: e.target.value })}
+                    id="fullName"
+                    value={shippingAddress.fullName}
+                    onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
                     placeholder="Enter full name"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -236,6 +294,7 @@ export default function CheckoutPage() {
                     value={shippingAddress.phone}
                     onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
                     placeholder="Enter phone number"
+                    required
                   />
                 </div>
               </div>
@@ -247,6 +306,7 @@ export default function CheckoutPage() {
                   value={shippingAddress.addressLine1}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, addressLine1: e.target.value })}
                   placeholder="House/Flat/Office No., Building Name, Street"
+                  required
                 />
               </div>
 
@@ -268,6 +328,7 @@ export default function CheckoutPage() {
                     value={shippingAddress.city}
                     onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
                     placeholder="Enter city"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -275,6 +336,7 @@ export default function CheckoutPage() {
                   <Select
                     value={shippingAddress.state}
                     onValueChange={(value) => setShippingAddress({ ...shippingAddress, state: value })}
+                    required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select state" />
@@ -295,6 +357,7 @@ export default function CheckoutPage() {
                     value={shippingAddress.pincode}
                     onChange={(e) => setShippingAddress({ ...shippingAddress, pincode: e.target.value })}
                     placeholder="Enter pincode"
+                    required
                   />
                 </div>
               </div>
@@ -311,10 +374,10 @@ export default function CheckoutPage() {
             <CardContent>
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="cod" id="cod" />
-                  <Label htmlFor="cod" className="flex items-center gap-2">
+                  <RadioGroupItem value="cod" id="cod" disabled /> {/* COD disabled */}
+                  <Label htmlFor="cod" className="flex items-center gap-2 text-muted-foreground">
                     <Wallet className="h-5 w-5" />
-                    Cash on Delivery (COD)
+                    Cash on Delivery (COD) - Currently Unavailable
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -381,7 +444,7 @@ export default function CheckoutPage() {
                           </span>
                         </div>
                         <span className="text-sm font-medium">
-                          ₹{(item.price * item.quantity * (item.rentDays || 1)).toLocaleString()}
+                          ₹{((item.rentPrice || item.price) * item.quantity * (item.rentDays || 1)).toLocaleString()}
                         </span>
                       </div>
                     ))}
@@ -396,7 +459,11 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <span>Shipping:</span>
-                <span>{shippingCharge === 0 ? "Free" : `₹${shippingCharge.toLocaleString()}`}</span>
+                {shippingCharge === 0 ? (
+                  <Badge className="bg-green-500 text-white">Free</Badge>
+                ) : (
+                  <span>₹{shippingCharge.toLocaleString()}</span>
+                )}
               </div>
               <div className="flex justify-between">
                 <span>Tax ({settings.taxRate}%):</span>
@@ -429,6 +496,7 @@ export default function CheckoutPage() {
               <Button
                 className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
                 onClick={handlePlaceOrder}
+                disabled={!termsAccepted || items.length === 0}
               >
                 Place Order
               </Button>

@@ -1,257 +1,186 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { Label } from "@/components/ui/label"
+
+import { useState, useMemo, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Heart, ShoppingCart, Search, Star } from "lucide-react"
-import { useCartStore, useWishlistStore } from "@/lib/store"
+import { Heart, ShoppingCart, Star } from "lucide-react"
+import { useCartStore, useWishlistStore, useAuthStore, useAdminStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 
-// Dummy data for products
-const allProducts = [
-  {
-    id: "AJ001",
-    name: "Diamond Elegance Necklace",
-    price: 25000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Necklaces",
-    rating: 4.8,
-    reviews: 120,
-    isRentable: false,
-  },
-  {
-    id: "AJ002",
-    name: "Golden Bracelet Set",
-    price: 6500,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Bracelets",
-    rating: 4.5,
-    reviews: 80,
-    isRentable: true,
-    rentPrice: 500, // per day
-  },
-  {
-    id: "AJ003",
-    name: "Royal Ruby Earrings",
-    price: 12000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Earrings",
-    rating: 4.9,
-    reviews: 150,
-    isRentable: false,
-  },
-  {
-    id: "AJ004",
-    name: "Emerald Grand Ring",
-    price: 18000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Rings",
-    rating: 4.7,
-    reviews: 95,
-    isRentable: true,
-    rentPrice: 800, // per day
-  },
-  {
-    id: "AJ005",
-    name: "Pearl Drop Necklace",
-    price: 9000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Necklaces",
-    rating: 4.6,
-    reviews: 70,
-    isRentable: false,
-  },
-  {
-    id: "AJ006",
-    name: "Silver Charm Bracelet",
-    price: 3000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Bracelets",
-    rating: 4.3,
-    reviews: 60,
-    isRentable: true,
-    rentPrice: 200, // per day
-  },
-  {
-    id: "AJ007",
-    name: "Sapphire Stud Earrings",
-    price: 7500,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Earrings",
-    rating: 4.7,
-    reviews: 110,
-    isRentable: false,
-  },
-  {
-    id: "AJ008",
-    name: "Vintage Gold Ring",
-    price: 15000,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Rings",
-    rating: 4.4,
-    reviews: 85,
-    isRentable: false,
-  },
-]
-
 export default function ProductsPage() {
-  const { toast } = useToast()
+  const { products } = useAdminStore()
   const { addCartItem } = useCartStore()
-  const { wishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlistStore()
+  const { items: wishlistItems, addWishlistItem, removeWishlistItem, isInWishlist } = useWishlistStore()
+  const { user } = useAuthStore()
+  const { toast } = useToast()
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 30000])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000])
   const [categoryFilter, setCategoryFilter] = useState("all")
-  const [sortOrder, setSortOrder] = useState("default")
-  const [availabilityFilter, setAvailabilityFilter] = useState("all") // 'all', 'sale', 'rent'
+  const [availabilityFilter, setAvailabilityFilter] = useState("all") // 'all', 'buy', 'rent'
+  const [sortOrder, setSortOrder] = useState("default") // 'default', 'price-asc', 'price-desc', 'rating-desc'
 
-  const categories = useMemo(() => {
-    const uniqueCategories = new Set(allProducts.map((product) => product.category))
-    return ["all", ...Array.from(uniqueCategories)]
-  }, [])
+  const allCategories = useMemo(() => {
+    const categories = new Set(products.map((product) => product.category))
+    return ["all", ...Array.from(categories)]
+  }, [products])
+
+  const maxPrice = useMemo(() => {
+    return Math.max(...products.map((p) => p.price), 50000)
+  }, [products])
+
+  useEffect(() => {
+    setPriceRange([0, maxPrice])
+  }, [maxPrice])
 
   const filteredProducts = useMemo(() => {
-    let products = allProducts.filter((product) => product.name.toLowerCase().includes(searchQuery.toLowerCase()))
-
-    products = products.filter((product) => product.price >= priceRange[0] && product.price <= priceRange[1])
+    let filtered = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        product.price >= priceRange[0] &&
+        product.price <= priceRange[1],
+    )
 
     if (categoryFilter !== "all") {
-      products = products.filter((product) => product.category === categoryFilter)
+      filtered = filtered.filter((product) => product.category === categoryFilter)
     }
 
-    if (availabilityFilter === "sale") {
-      products = products.filter((product) => !product.isRentable)
+    if (availabilityFilter === "buy") {
+      filtered = filtered.filter((product) => !product.isRentable)
     } else if (availabilityFilter === "rent") {
-      products = products.filter((product) => product.isRentable)
+      filtered = filtered.filter((product) => product.isRentable)
     }
 
     switch (sortOrder) {
       case "price-asc":
-        products.sort((a, b) => a.price - b.price)
+        filtered.sort((a, b) => a.price - b.price)
         break
       case "price-desc":
-        products.sort((a, b) => b.price - a.price)
+        filtered.sort((a, b) => b.price - a.price)
         break
       case "rating-desc":
-        products.sort((a, b) => b.rating - a.rating)
-        break
-      case "name-asc":
-        products.sort((a, b) => a.name.localeCompare(b.name))
+        // Assuming products have a 'rating' property
+        // For now, using a dummy sort if no rating exists
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0))
         break
       default:
         // No specific sort
         break
     }
 
-    return products
-  }, [searchQuery, priceRange, categoryFilter, sortOrder, availabilityFilter])
+    return filtered
+  }, [products, searchTerm, priceRange, categoryFilter, availabilityFilter, sortOrder])
 
-  const handleAddToCart = (product: (typeof allProducts)[0], type: "buy" | "rent") => {
-    // In a real app, you'd check if the user is logged in
-    const isAuthenticated = true // Placeholder
-    if (!isAuthenticated) {
+  const handleAddToCart = (product: (typeof products)[0], type: "buy" | "rent", rentDays?: number) => {
+    if (!user) {
       toast({
-        title: "Login Required",
-        description: "Please log in to add items to your cart.",
+        title: "Authentication Required",
+        description: "Please sign in to add items to your cart.",
         variant: "destructive",
       })
       return
     }
-
     addCartItem({
       id: product.id,
       name: product.name,
-      price: product.price,
       image: product.image,
+      price: product.price,
       quantity: 1,
-      type: type,
-      rentDays: type === "rent" ? 1 : undefined, // Default to 1 day for rent
+      type,
+      rentDays,
+      rentPrice: product.rentPrice,
     })
     toast({
-      title: "Added to Cart",
-      description: `${product.name} has been added to your cart.`,
+      title: "Item Added",
+      description: `${product.name} added to your cart!`,
+      variant: "success",
     })
   }
 
-  const handleToggleWishlist = (product: (typeof allProducts)[0]) => {
-    // In a real app, you'd check if the user is logged in
-    const isAuthenticated = true // Placeholder
-    if (!isAuthenticated) {
+  const handleToggleWishlist = (product: (typeof products)[0]) => {
+    if (!user) {
       toast({
-        title: "Login Required",
-        description: "Please log in to manage your wishlist.",
+        title: "Authentication Required",
+        description: "Please sign in to manage your wishlist.",
         variant: "destructive",
       })
       return
     }
-
     if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id)
+      removeWishlistItem(product.id)
       toast({
         title: "Removed from Wishlist",
-        description: `${product.name} has been removed from your wishlist.`,
+        description: `${product.name} removed from your wishlist.`,
+        variant: "default",
       })
     } else {
-      addToWishlist(product)
+      addWishlistItem({
+        id: product.id,
+        name: product.name,
+        image: product.image,
+        price: product.price,
+      })
       toast({
         title: "Added to Wishlist",
-        description: `${product.name} has been added to your wishlist.`,
+        description: `${product.name} added to your wishlist!`,
+        variant: "success",
       })
     }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 md:px-6">
-      <h1 className="mb-8 text-3xl font-bold">Our Exquisite Collection</h1>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-[280px_1fr]">
-        {/* Filters Sidebar */}
-        <div className="space-y-6">
-          {/* Search */}
-          <div>
-            <h3 className="mb-3 text-lg font-semibold">Search Products</h3>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Our Products</h1>
+        <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+          Explore our exquisite collection of jewelry for every occasion.
+        </p>
+      </div>
 
-          {/* Price Range */}
-          <div>
-            <h3 className="mb-3 text-lg font-semibold">Price Range</h3>
-            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[280px_1fr]">
+        {/* Filters Sidebar */}
+        <div className="space-y-6 rounded-lg border bg-card p-6 text-card-foreground shadow-sm">
+          <h2 className="text-lg font-semibold">Filters</h2>
+          <div className="space-y-2">
+            <Label htmlFor="search">Search</Label>
+            <Input
+              id="search"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Price Range</Label>
+            <Slider
+              min={0}
+              max={maxPrice}
+              step={100}
+              value={priceRange}
+              onValueChange={(value: [number, number]) => setPriceRange(value)}
+              className="w-full"
+            />
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
               <span>₹{priceRange[0].toLocaleString()}</span>
               <span>₹{priceRange[1].toLocaleString()}</span>
             </div>
-            <Slider
-              min={0}
-              max={30000}
-              step={500}
-              value={priceRange}
-              onValueChange={(value: number[]) => setPriceRange(value as [number, number])}
-              className="mt-2"
-            />
           </div>
-
-          {/* Category Filter */}
-          <div>
-            <h3 className="mb-3 text-lg font-semibold">Category</h3>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Category" />
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((category) => (
+                {allCategories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category === "all" ? "All Categories" : category}
                   </SelectItem>
@@ -259,102 +188,117 @@ export default function ProductsPage() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Availability Filter */}
-          <div>
-            <h3 className="mb-3 text-lg font-semibold">Availability</h3>
+          <div className="space-y-2">
+            <Label htmlFor="availability">Availability</Label>
             <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter by Availability" />
+              <SelectTrigger id="availability">
+                <SelectValue placeholder="Filter by availability" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="sale">Available for Sale</SelectItem>
+                <SelectItem value="buy">Available for Sale</SelectItem>
                 <SelectItem value="rent">Available for Rent</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {/* Sort By */}
-          <div>
-            <h3 className="mb-3 text-lg font-semibold">Sort By</h3>
+          <div className="space-y-2">
+            <Label htmlFor="sort">Sort By</Label>
             <Select value={sortOrder} onValueChange={setSortOrder}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Sort Order" />
+              <SelectTrigger id="sort">
+                <SelectValue placeholder="Sort products" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="default">Default</SelectItem>
                 <SelectItem value="price-asc">Price: Low to High</SelectItem>
                 <SelectItem value="price-desc">Price: High to Low</SelectItem>
                 <SelectItem value="rating-desc">Rating: High to Low</SelectItem>
-                <SelectItem value="name-asc">Name: A-Z</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredProducts.length === 0 ? (
+            <div className="col-span-full text-center text-gray-500 dark:text-gray-400">
+              No products found matching your criteria.
+            </div>
+          ) : (
             filteredProducts.map((product) => (
-              <Card key={product.id} className="group relative overflow-hidden rounded-lg shadow-lg">
-                <Link href={`/products/${product.id}`} className="absolute inset-0 z-10" prefetch={false}>
-                  <span className="sr-only">View Product</span>
+              <Card key={product.id} className="flex flex-col overflow-hidden">
+                <Link href={`/products/${product.id}`} className="relative block h-48 w-full overflow-hidden">
+                  <Image
+                    src={product.image || "/placeholder.svg"}
+                    alt={product.name}
+                    layout="fill"
+                    objectFit="cover"
+                    className="transition-transform duration-300 hover:scale-105"
+                  />
+                  {product.isRentable && (
+                    <Badge className="absolute top-2 left-2 bg-blue-500 text-white">Rentable</Badge>
+                  )}
+                  {!product.inStock && (
+                    <Badge className="absolute top-2 right-2 bg-red-500 text-white">Out of Stock</Badge>
+                  )}
                 </Link>
-                <Image
-                  src={product.image || "/placeholder.svg"}
-                  alt={product.name}
-                  width={300}
-                  height={300}
-                  className="h-60 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <CardContent className="p-4">
-                  <h3 className="text-lg font-semibold">{product.name}</h3>
-                  <div className="mt-1 flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    <span>
-                      {product.rating} ({product.reviews})
-                    </span>
+                <CardContent className="flex flex-grow flex-col justify-between p-4">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">{product.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{product.category}</p>
+                    <div className="flex items-center gap-1 text-sm text-amber-500">
+                      <Star className="h-4 w-4 fill-amber-500" />
+                      <span>
+                        {product.rating || "N/A"} ({product.reviews || 0} reviews)
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="text-xl font-bold">₹{product.price.toLocaleString()}</div>
-                    {product.isRentable && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Rent: ₹{product.rentPrice?.toLocaleString()}/day
+                  <div className="mt-4 flex items-center justify-between">
+                    {product.isRentable ? (
+                      <div className="flex flex-col">
+                        <span className="text-xl font-bold">₹{product.price.toLocaleString()}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          or ₹{product.rentPrice?.toLocaleString()}/day
+                        </span>
                       </div>
+                    ) : (
+                      <span className="text-xl font-bold">₹{product.price.toLocaleString()}</span>
                     )}
-                  </div>
-                  <div className="mt-4 flex gap-2">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
-                      className="z-20 bg-transparent"
                       onClick={() => handleToggleWishlist(product)}
+                      className={isInWishlist(product.id) ? "text-red-500" : ""}
                     >
-                      <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? "fill-red-500 text-red-500" : ""}`} />
+                      <Heart className="h-5 w-5" />
                     </Button>
-                    <Button className="flex-1 z-20" onClick={() => handleAddToCart(product, "buy")}>
-                      <ShoppingCart className="mr-2 h-5 w-5" />
-                      Add to Cart
-                    </Button>
-                    {product.isRentable && (
-                      <Button
-                        className="flex-1 z-20 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                        onClick={() => handleAddToCart(product, "rent")}
-                      >
-                        Rent Now
-                      </Button>
-                    )}
                   </div>
                 </CardContent>
+                <CardFooter className="p-4 pt-0">
+                  {product.inStock ? (
+                    <div className="flex w-full gap-2">
+                      <Button
+                        className="flex-1 bg-amber-500 text-white hover:bg-amber-600"
+                        onClick={() => handleAddToCart(product, "buy")}
+                      >
+                        <ShoppingCart className="mr-2 h-4 w-4" /> Add to Cart
+                      </Button>
+                      {product.isRentable && (
+                        <Button
+                          className="flex-1 bg-blue-500 text-white hover:bg-blue-600"
+                          onClick={() => handleAddToCart(product, "rent", 7)} // Default 7 days for rent
+                        >
+                          Rent Now
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <Button className="w-full" disabled>
+                      Out of Stock
+                    </Button>
+                  )}
+                </CardFooter>
               </Card>
             ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No products found</h3>
-              <p className="text-muted-foreground mb-4">Try adjusting your filters or search query.</p>
-            </div>
           )}
         </div>
       </div>
